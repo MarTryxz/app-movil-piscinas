@@ -10,4 +10,9 @@
     <color name="sensor_temp">#FFA726</color>
     <color name="sensor_ph">#EF5350</color>
     <color name="sensor_turbidity">#66BB6A</color>
+        <color name="background_color">#FFFFFF</color>
+        <color name="text_color">#333333</color>
+        <color name="link_color">#2196F3</color>
+    <color name="primary_color">#2196F3</color>
+    <color name="secondary_color">#0F5289</color>
 </resources>

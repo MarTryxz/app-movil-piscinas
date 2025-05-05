@@ -51,40 +51,61 @@ public class Login extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
+        //Este es el boton para registrarse
         textViewRegisterNow = findViewById(R.id.registerNow);
+
+        //Aqui empieza el boton que usamos para iniciar sesion
         textInputEditTextEmail = findViewById(R.id.email);
         textInputEditTextPassword = findViewById(R.id.password);
+
+        //Aqui empieza el boton para enviar el formulario
         buttonSubmit = findViewById(R.id.submit);
+
+        //Aqui empieza el boton para mostrar un error
         textViewError = findViewById(R.id.error);
+
+        //Aqui empieza el boton para mostrar el progreso
         progressBar = findViewById(R.id.loading);
 
+        //inicializamos la variable de sharedPreferences con el nombre de la app
         sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
 
+        //Si el usuario esta logeado y tiene un nombre, entonces iniciamos el activity principal
         if(sharedPreferences.getString("logged", "false").equals("true") && sharedPreferences.getString("name", "") != ""){
             Intent intent = new Intent(getApplicationContext(), MainActivity.class);
             startActivity(intent);
             finish();
         }
-        //aqui empieza el boton que usamos para iniciar sesion
+
+        //aqui empieza el boton que usamos para iniciar sesion | Existen pequeñas correcciones que se pueden hacer como por ejemplo
+        //cambiar el texto de error de "Por favor, completa todos los campos." por "Por favor, completa todos los campos o registrate." |
+        //o cambiar el texto de error de "Error procesando respuesta: " + e.getMessage() por "Error procesando respuesta: " + e.getLocalizedMessage()
         buttonSubmit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                //Aqui inicializamos la variable de sharedPreferences con el nombre de la app
                 SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
 
+                //Aqui obtenemos el email y el password
                 email = textInputEditTextEmail.getText().toString().trim();
                 password = textInputEditTextPassword.getText().toString().trim();
 
+                //Si el usuario no ha completado el email o el password, entonces mostramos un error
                 if (email.isEmpty() || password.isEmpty()) {
                     Toast.makeText(Login.this, "Por favor, completa todos los campos.", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
+                //Aqui mostramos el progreso
+                textViewError.setVisibility(View.GONE);
                 progressBar.setVisibility(View.VISIBLE);
 
+                //Aqui inicializamos el objeto RequestQueue
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
+                //Aqui obtenemos la url de la api
                 String url = "http://192.168.100.91/backendpiscina/login.php";
 
+                //Aqui inicializamos el objeto StringRequest. Este objeto se encarga de enviar la peticion a la api (asi son comunicamos con la base de datos a traves de la api)
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                         new Response.Listener<String>() {
                             @Override
@@ -152,7 +173,7 @@ public class Login extends AppCompatActivity {
             }
         });
 
-
+        //Aqui empieza el boton para ir a la pantalla de registro
         textViewRegisterNow.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
