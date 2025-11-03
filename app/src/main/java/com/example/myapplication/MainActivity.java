@@ -30,59 +30,69 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private SharedPreferences sharedPreferences;
     private RequestQueue queue;
-    private String temperatura, ph;
 
     @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
+
+        // 1. Inflar la nueva vista
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        // 2. Aplicar insets al 'main' (el ID que agregamos al root)
         ViewCompat.setOnApplyWindowInsetsListener(binding.main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0); // Padding inferior manejado por BottomNav
             return insets;
         });
 
         sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
 
+        // 3. Revisar sesión (esto sigue igual)
         if (sharedPreferences.getString("logged", "false").equals("false") || sharedPreferences.getString("name", "").isEmpty()) {
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
             finish();
-            return; // Return to prevent further execution
+            return;
         }
 
-        binding.name.setText("👋 ¡Hola, " + sharedPreferences.getString("name", "") + "! 🏊");
+        // 4. Configurar etiquetas de los medidores (gauges)
+        binding.phGauge.tvGaugeLabel.setText("Nivel de pH");
+        binding.tempGauge.tvGaugeLabel.setText("Temperatura");
 
+        // 5. Inicializar Volley y buscar datos
         queue = Volley.newRequestQueue(getApplicationContext());
         fetchDashboardData();
 
-        binding.refreshTemperatureButton.setOnClickListener(v -> fetchDashboardData());
-        binding.refreshPhButton.setOnClickListener(v -> fetchDashboardData());
+        // 6. Configurar el listener de la barra de navegación
+        setupBottomNavigation();
+    }
 
-        binding.logout.setOnClickListener(v -> logoutUser());
-
-        binding.userSettingsButton.setOnClickListener(view -> {
-            Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
-            startActivity(intent);
-        });
-
-        binding.modifyScheduleButton.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), PumpTimerSettingsActivity.class);
-            startActivity(intent);
-        });
-
-        binding.TempCard.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), TemperatureHistoryActivity.class);
-            startActivity(intent);
-        });
-
-        binding.PhCard.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), PhView.class);
-            startActivity(intent);
+    private void setupBottomNavigation() {
+        binding.bottomNavigation.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_monitor) {
+                // Ya estamos aquí, pero podemos refrescar
+                fetchDashboardData();
+                return true;
+            } else if (itemId == R.id.nav_history) {
+                // Ir a la actividad de historial (Tú decides cuál)
+                Intent intent = new Intent(getApplicationContext(), TemperatureHistoryActivity.class);
+                startActivity(intent);
+                return true;
+            } else if (itemId == R.id.nav_profile) {
+                // Ir a la actividad de perfil
+                Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
+                startActivity(intent);
+                return true;
+            } else if (itemId == R.id.nav_help) {
+                // Mostrar un Toast o una pantalla de ayuda
+                Toast.makeText(this, "Pantalla de Ayuda (próximamente)", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
         });
     }
 
@@ -96,13 +106,16 @@ public class MainActivity extends AppCompatActivity {
                         JSONObject jsonObject = new JSONObject(response);
                         String status = jsonObject.getString("status");
                         if (status.equals("success")) {
-                            temperatura = jsonObject.getString("temperatura");
-                            ph = jsonObject.getString("ph");
-                            binding.poolTemperatureTextView.setText(temperatura + "°");
-                            binding.phLevelTextView.setText(ph);
-                            String schedule1 = jsonObject.getString("hora_inicio");
-                            String schedule2 = jsonObject.getString("hora_fin");
-                            binding.pumpScheduleTextView.setText(schedule1 + " - " + schedule2);
+                            String temperaturaStr = jsonObject.getString("temperatura");
+                            String phStr = jsonObject.getString("ph");
+
+                            // Actualizar los TextViews de los medidores
+                            binding.tempGauge.tvGaugeValue.setText(temperaturaStr + "°");
+                            binding.phGauge.tvGaugeValue.setText(phStr);
+
+                            // Actualizar las barras de progreso
+                            updateGaugeProgress(temperaturaStr, phStr);
+
                         } else {
                             String message = jsonObject.getString("message");
                             Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show();
@@ -123,33 +136,27 @@ public class MainActivity extends AppCompatActivity {
         queue.add(stringRequest);
     }
 
-    private void logoutUser() {
-        String url = "http://192.168.100.91/backendpiscina/logout.php";
+    private void updateGaugeProgress(String temperaturaStr, String phStr) {
+        try {
+            float temperatura = Float.parseFloat(temperaturaStr);
+            float ph = Float.parseFloat(phStr);
 
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                response -> {
-                    if (response.equals("success")) {
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.clear();
-                        editor.putString("logged", "false");
-                        editor.apply();
+            // Asumimos un rango para las barras de progreso
+            // Rango de Temperatura: 0°C a 40°C
+            int tempMax = 40;
+            binding.tempGauge.gaugeProgressBar.setMax(tempMax);
+            binding.tempGauge.gaugeProgressBar.setProgress((int) temperatura);
 
-                        Intent intent = new Intent(getApplicationContext(), Login.class);
-                        startActivity(intent);
-                        finish();
-                    } else {
-                        Toast.makeText(MainActivity.this, "Error al cerrar sesión: " + response, Toast.LENGTH_SHORT).show();
-                    }
-                },
-                error -> Toast.makeText(MainActivity.this, "No se pudo cerrar sesión. Verifique su conexión.", Toast.LENGTH_SHORT).show()) {
-            @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<>();
-                params.put("email", sharedPreferences.getString("email", ""));
-                params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                return params;
-            }
-        };
-        queue.add(stringRequest);
+            // Rango de pH: 0 a 14 (multiplicamos por 10 para más precisión en int)
+            int phMax = 140;
+            binding.phGauge.gaugeProgressBar.setMax(phMax);
+            binding.phGauge.gaugeProgressBar.setProgress((int) (ph * 10));
+
+        } catch (NumberFormatException e) {
+            Log.e("GaugeError", "No se pudo convertir el valor para la barra de progreso", e);
+        }
     }
+
+    // Ya no necesitas la función logoutUser() aquí,
+    // es mejor ponerla dentro de ProfileEditor.class
 }

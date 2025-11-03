@@ -10,9 +10,19 @@
     <color name="sensor_temp">#FFA726</color>
     <color name="sensor_ph">#EF5350</color>
     <color name="sensor_turbidity">#66BB6A</color>
-        <color name="background_color">#FFFFFF</color>
-        <color name="text_color">#333333</color>
-        <color name="link_color">#2196F3</color>
+    <color name="background_color">#FFFFFF</color>
+    <color name="text_color">#333333</color>
+    <color name="link_color">#2196F3</color>
     <color name="primary_color">#2196F3</color>
     <color name="secondary_color">#0F5289</color>
+
+    <!-- Colores añadidos para activity_main.xml -->
+    <color name="background">#F5F5F5</color>
+    <color name="text_primary">#212121</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="nav_item_default">#757575</color>
+    <color name="nav_item_selected">#2196F3</color>
+
+    <color name="md_theme_primary">#00658E</color>
+    <color name="md_theme_onPrimary">#FFFFFF</color>
 </resources>
