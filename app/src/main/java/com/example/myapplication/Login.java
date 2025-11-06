@@ -103,7 +103,7 @@ public class Login extends AppCompatActivity {
                 //Aqui inicializamos el objeto RequestQueue
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
                 //Aqui obtenemos la url de la api
-                String url = "http://192.168.100.91/backendpiscina/login.php";
+                String url = "http://192.168.1.6/backendpiscina/login.php";
 
                 //Aqui inicializamos el objeto StringRequest. Este objeto se encarga de enviar la peticion a la api (asi son comunicamos con la base de datos a traves de la api)
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url,

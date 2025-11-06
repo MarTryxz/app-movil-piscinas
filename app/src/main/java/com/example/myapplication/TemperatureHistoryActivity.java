@@ -71,7 +71,7 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/logout.php";
+                String url = "http://192.168.1.6/backendpiscina/logout.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                         new Response.Listener<String>() {
@@ -141,7 +141,7 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
 
         // Crear la lista de temperaturas
         RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-        String url = "http://192.168.100.91/backendpiscina/historial-temp.php";
+        String url = "http://192.168.1.6/backendpiscina/historial-temp.php";
 
         // Lista para almacenar los registros
         List<TemperatureRecord> history = new ArrayList<>();

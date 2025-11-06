@@ -89,7 +89,7 @@ public class ProfileEditor extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
+                String url = "http://192.168.1.6/backendpiscina/editar/update-m.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                     @Override
@@ -169,7 +169,7 @@ public class ProfileEditor extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
+                String url = "http://192.168.1.6/backendpiscina/editar/update-m.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                     @Override
@@ -245,7 +245,7 @@ public class ProfileEditor extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
+                String url = "http://192.168.1.6/backendpiscina/editar/update-m.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                     @Override
@@ -321,7 +321,7 @@ public class ProfileEditor extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
+                String url = "http://192.168.1.6/backendpiscina/editar/update-m.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                     @Override
@@ -398,7 +398,7 @@ public class ProfileEditor extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
+                String url = "http://192.168.1.6/backendpiscina/editar/update-m.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                     @Override
@@ -471,7 +471,7 @@ public class ProfileEditor extends AppCompatActivity {
                 }
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/logout.php";
+                String url = "http://192.168.1.6/backendpiscina/logout.php";
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                         new Response.Listener<String>() {
