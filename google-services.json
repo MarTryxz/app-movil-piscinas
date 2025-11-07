@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "95725586858",
+    "firebase_url": "https://aquaguardprotype-default-rtdb.firebaseio.com",
+    "project_id": "aquaguardprotype",
+    "storage_bucket": "aquaguardprotype.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:95725586858:android:079f4b2fce04d3e5a7c3d3",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "95725586858-bt6pi09ar501k6eal2ugt1vnhanhafqq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCe9eIFabG5VRTzL3miu9Jt35Np7B29sNg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "95725586858-bt6pi09ar501k6eal2ugt1vnhanhafqq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,7 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.gms.google.services)
 }
+
 
 android {
     namespace = "com.example.myapplication"
@@ -43,7 +45,15 @@ android {
     }
 }
 
+// C:/workspace/androidStudio/app-movil-piscinas/app/build.gradle.kts
+
+// ... existing code ...
+
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    // Add the Firebase Authentication dependency here
+    implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.android.volley:volley:1.2.1")
     implementation(libs.appcompat)
@@ -60,6 +70,7 @@ dependencies {
     implementation(libs.ui.graphics)
     implementation(libs.ui.tooling.preview)
     implementation(libs.material3)
+    implementation(libs.firebase.database) // Already there for Realtime Database
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
