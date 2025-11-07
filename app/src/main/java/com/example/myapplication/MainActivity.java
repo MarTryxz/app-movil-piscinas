@@ -2,7 +2,7 @@ package com.example.myapplication;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.SharedPreferences;
+// import android.content.SharedPreferences; // Ya no se usa para la sesión
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -16,6 +16,10 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.databinding.ActivityMainBinding;
 
+// --- AÑADIR IMPORTACIONES DE FIREBASE AUTH ---
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+// ---
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -25,7 +29,10 @@ import com.google.firebase.database.ValueEventListener;
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
-    private SharedPreferences sharedPreferences;
+    // private SharedPreferences sharedPreferences; // Eliminado
+
+    // --- AÑADIR FIREBASE AUTH ---
+    private FirebaseAuth mAuth;
 
     private DatabaseReference databaseReference;
     private ValueEventListener lecturasListener;
@@ -45,42 +52,61 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
+        // --- INICIALIZAR FIREBASE AUTH ---
+        mAuth = FirebaseAuth.getInstance();
 
-        // Revisar sesión
+        // --- BLOQUE DE SESIÓN DE SHARED PREFERENCES (ELIMINADO) ---
+        /*
+        sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
         if (sharedPreferences.getString("logged", "false").equals("false") || sharedPreferences.getString("name", "").isEmpty()) {
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
             finish();
             return;
         }
+        */
+        // --- FIN DE LA ELIMINACIÓN ---
 
-        // --- CAMBIO: Añadir etiquetas para los nuevos medidores ---
+
+        // Configurar etiquetas de los medidores (esto está bien)
         binding.phGauge.tvGaugeLabel.setText("Nivel de pH");
         binding.tempGauge.tvGaugeLabel.setText("Temp. Agua");
         binding.tempAireGauge.tvGaugeLabel.setText("Temp. Aire");
         binding.humedadAireGauge.tvGaugeLabel.setText("Humedad Aire");
 
-        // 2. Inicializar Firebase y apuntar al nodo "lecturas"
+        // Inicializar Firebase y apuntar al nodo "lecturas"
         databaseReference = FirebaseDatabase.getInstance().getReference("lecturas");
 
-        // 3. Definir el listener que reaccionará a los cambios
+        // Definir el listener que reaccionará a los cambios
         setupFirebaseListener();
 
         // Configurar el listener de la barra de navegación
         setupBottomNavigation();
     }
 
-    // 4. onStart (Sin cambios)
+    // --- onStart() MODIFICADO ---
     @Override
     protected void onStart() {
         super.onStart();
+
+        // --- AÑADIR NUEVA COMPROBACIÓN DE SESIÓN ---
+        // Este es el lugar correcto. Se ejecuta cada vez que la pantalla se vuelve visible.
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if(currentUser == null){
+            // No hay usuario logueado en Firebase, regresamos a Login.
+            Intent intent = new Intent(getApplicationContext(), Login.class);
+            startActivity(intent);
+            finish(); // Cerramos MainActivity
+            return; // Detenemos la ejecución de onStart
+        }
+
+        // Si el usuario SÍ está logueado, adjuntamos el listener de la base de datos
         if (databaseReference != null && lecturasListener != null) {
             databaseReference.addValueEventListener(lecturasListener);
         }
     }
 
-    // 5. onStop (Sin cambios)
+    // onStop (Sin cambios)
     @Override
     protected void onStop() {
         super.onStop();
@@ -89,34 +115,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 6. --- CAMBIO: Actualizado para leer los 4 valores ---
+    // setupFirebaseListener (Sin cambios, ya está correcto para 4 valores)
     private void setupFirebaseListener() {
         lecturasListener = new ValueEventListener() {
             @SuppressLint("SetTextI18n")
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    // Leemos los 4 valores
                     Double tempAgua = snapshot.child("tempAgua").getValue(Double.class);
                     Double ph = snapshot.child("phVoltaje").getValue(Double.class);
                     Double tempAire = snapshot.child("tempAire").getValue(Double.class);
                     Double humedadAire = snapshot.child("humedadAire").getValue(Double.class);
 
-                    // Verificamos que los valores no sean nulos
                     if (tempAgua != null && ph != null && tempAire != null && humedadAire != null) {
-                        // Convertimos a String para la UI
-                        String tempAguaStr = String.format("%.1f", tempAgua); // Formato con 1 decimal
-                        String phStr = String.format("%.2f", ph); // Formato con 2 decimales
+                        String tempAguaStr = String.format("%.1f", tempAgua);
+                        String phStr = String.format("%.2f", ph);
                         String tempAireStr = String.format("%.1f", tempAire);
                         String humedadAireStr = String.format("%.1f", humedadAire);
 
-                        // Actualizar los 4 TextViews de los medidores
                         binding.tempGauge.tvGaugeValue.setText(tempAguaStr + "°");
                         binding.phGauge.tvGaugeValue.setText(phStr);
                         binding.tempAireGauge.tvGaugeValue.setText(tempAireStr + "°");
-                        binding.humedadAireGauge.tvGaugeValue.setText(humedadAireStr + "%"); // Añadimos "%"
+                        binding.humedadAireGauge.tvGaugeValue.setText(humedadAireStr + "%");
 
-                        // Actualizar las 4 barras de progreso
                         updateGaugeProgress(tempAguaStr, phStr, tempAireStr, humedadAireStr);
                     }
                 } else {
@@ -132,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
-    // 7. setupBottomNavigation (Sin cambios)
+    // setupBottomNavigation (Sin cambios)
     private void setupBottomNavigation() {
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
@@ -154,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // 8. --- CAMBIO: Actualizado para procesar los 4 valores ---
+    // updateGaugeProgress (Sin cambios, ya está correcto para 4 valores)
     private void updateGaugeProgress(String tempAguaStr, String phStr, String tempAireStr, String humedadAireStr) {
         try {
             float tempAgua = Float.parseFloat(tempAguaStr);
@@ -162,22 +183,18 @@ public class MainActivity extends AppCompatActivity {
             float tempAire = Float.parseFloat(tempAireStr);
             float humedadAire = Float.parseFloat(humedadAireStr);
 
-            // Rango de Temp. Agua: 0°C a 40°C
             int tempAguaMax = 40;
             binding.tempGauge.gaugeProgressBar.setMax(tempAguaMax);
             binding.tempGauge.gaugeProgressBar.setProgress((int) tempAgua);
 
-            // Rango de pH: 0 a 14 (multiplicamos por 10 para más precisión en int)
             int phMax = 140;
             binding.phGauge.gaugeProgressBar.setMax(phMax);
             binding.phGauge.gaugeProgressBar.setProgress((int) (ph * 10));
 
-            // Rango de Temp. Aire: 0°C a 40°C (Asumiendo)
             int tempAireMax = 40;
             binding.tempAireGauge.gaugeProgressBar.setMax(tempAireMax);
             binding.tempAireGauge.gaugeProgressBar.setProgress((int) tempAire);
 
-            // Rango de Humedad Aire: 0% a 100% (Asumiendo)
             int humedadAireMax = 100;
             binding.humedadAireGauge.gaugeProgressBar.setMax(humedadAireMax);
             binding.humedadAireGauge.gaugeProgressBar.setProgress((int) humedadAire);

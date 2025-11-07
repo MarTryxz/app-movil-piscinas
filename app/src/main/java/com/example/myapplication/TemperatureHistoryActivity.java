@@ -1,7 +1,7 @@
 package com.example.myapplication;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
+// import android.content.SharedPreferences; // Ya no es necesario
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -29,7 +29,7 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
     private TemperatureAdapter temperatureAdapter;
-    private List<TemperatureRecord> temperatureHistoryList; // Usar una lista para el adaptador
+    private List<TemperatureRecord> temperatureHistoryList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,16 +46,32 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
         binding.temperatureRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.temperatureRecyclerView.setAdapter(temperatureAdapter);
 
-        // 1. Lógica de navegación inferior (reemplaza los botones eliminados)
+        // 1. Lógica de navegación inferior
         setupBottomNavigation();
 
-        // 2. Cargar historial de temperaturas desde Firebase
-        loadTemperatureHistory();
+        // 2. Cargar historial de temperaturas (SE MOVIÓ A onStart())
+        // loadTemperatureHistory(); // <-- Ya no se llama aquí
+    }
+
+    // --- AÑADIMOS onStart() PARA VERIFICAR LA SESIÓN ---
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if(currentUser == null){
+            // No hay usuario logueado, ir a Login y salir de esta actividad
+            Intent intent = new Intent(getApplicationContext(), Login.class);
+            startActivity(intent);
+            finish();
+        } else {
+            // Usuario SÍ está logueado, cargar su historial
+            loadTemperatureHistory(currentUser.getUid());
+        }
     }
 
     /**
      * Configura el listener para la barra de navegación inferior.
-     * Esta función maneja la navegación entre las principales actividades de la app.
      */
     private void setupBottomNavigation() {
         // Marcamos "Historial" como el ítem seleccionado en esta actividad
@@ -64,22 +80,18 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.nav_monitor) {
-                // Ir a la pantalla principal (Monitor)
                 Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                 startActivity(intent);
-                finish(); // Cierra esta actividad para no apilarla
+                finish();
                 return true;
             } else if (itemId == R.id.nav_history) {
-                // Ya estamos aquí, no hacemos nada
                 return true;
             } else if (itemId == R.id.nav_profile) {
-                // Ir a la pantalla de perfil
                 Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
                 startActivity(intent);
-                finish(); // Cierra esta actividad
+                finish();
                 return true;
             } else if (itemId == R.id.nav_help) {
-                // Mostrar un Toast o una pantalla de ayuda
                 Toast.makeText(this, "Pantalla de Ayuda (próximamente)", Toast.LENGTH_SHORT).show();
                 return true;
             }
@@ -88,63 +100,53 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Carga los registros de temperatura desde Firebase Realtime Database
-     * para el usuario autenticado actualmente.
+     * Carga los registros de temperatura (MODIFICADO)
+     * Ahora asume que el usuario está validado y recibe el userId.
      */
-    private void loadTemperatureHistory() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser != null) {
-            String userId = currentUser.getUid();
-            // Asegúrate de que esta ruta ("temperaturas" -> userId) coincide con tu estructura de Firebase
-            mDatabase.child("temperaturas").child(userId)
-                    .addValueEventListener(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                            temperatureHistoryList.clear(); // Limpiar antes de añadir nuevos datos
-                            if (dataSnapshot.exists()) {
-                                for (DataSnapshot recordSnapshot : dataSnapshot.getChildren()) {
-                                    TemperatureRecord record = recordSnapshot.getValue(TemperatureRecord.class);
-                                    if (record != null) {
-                                        temperatureHistoryList.add(record);
-                                    }
-                                }
-                                // Notificar al adaptador que los datos cambiaron
-                                temperatureAdapter.notifyDataSetChanged();
-                                // Mostrar u ocultar el estado vacío
-                                binding.emptyState.setVisibility(temperatureHistoryList.isEmpty() ? View.VISIBLE : View.GONE);
-                            } else {
-                                Log.d("TemperatureHistory", "No hay datos de temperatura para este usuario.");
-                                temperatureAdapter.notifyDataSetChanged(); // Asegura que se muestre vacío
-                                binding.emptyState.setVisibility(View.VISIBLE);
-                            }
-                        }
+    private void loadTemperatureHistory(String userId) { // <-- Acepta el userId
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
-                            Log.e("TemperatureHistory", "Error al leer datos de Firebase: " + databaseError.getMessage());
-                            Toast.makeText(TemperatureHistoryActivity.this, "Error al cargar historial: " + databaseError.getMessage(), Toast.LENGTH_LONG).show();
+        // Ya no necesitamos la comprobación "if (currentUser != null)"
+        // porque onStart() ya la hizo.
+
+        mDatabase.child("temperaturas").child(userId)
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        temperatureHistoryList.clear();
+                        if (dataSnapshot.exists()) {
+                            for (DataSnapshot recordSnapshot : dataSnapshot.getChildren()) {
+                                TemperatureRecord record = recordSnapshot.getValue(TemperatureRecord.class);
+                                if (record != null) {
+                                    temperatureHistoryList.add(record);
+                                }
+                            }
+                            temperatureAdapter.notifyDataSetChanged();
+                            binding.emptyState.setVisibility(temperatureHistoryList.isEmpty() ? View.VISIBLE : View.GONE);
+                        } else {
+                            Log.d("TemperatureHistory", "No hay datos de temperatura para este usuario.");
+                            temperatureAdapter.notifyDataSetChanged();
                             binding.emptyState.setVisibility(View.VISIBLE);
                         }
-                    });
-        } else {
-            // Si por alguna razón el usuario no está autenticado, regresarlo al Login
-            Toast.makeText(this, "Usuario no autenticado, por favor inicie sesión.", Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(getApplicationContext(), Login.class);
-            startActivity(intent);
-            finish();
-        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Log.e("TemperatureHistory", "Error al leer datos de Firebase: " + databaseError.getMessage());
+                        Toast.makeText(TemperatureHistoryActivity.this, "Error al cargar historial: " + databaseError.getMessage(), Toast.LENGTH_LONG).show();
+                        binding.emptyState.setVisibility(View.VISIBLE);
+                    }
+                });
+
+        // La parte "else" que redirigía al Login también se eliminó
+        // porque ya no es necesaria aquí.
     }
 
-    // Si `TemperatureRecord` es una clase separada (lo cual es recomendable),
-    // puedes borrar este comentario. Si no, asegúrate de que exista y sea pública.
     /*
     public static class TemperatureRecord {
         public String fechaHora;
         public float temperatura;
 
-        public TemperatureRecord() {
-            // Constructor por defecto requerido para Firebase
-        }
+        public TemperatureRecord() { }
     }
     */
 }

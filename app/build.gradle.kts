@@ -79,4 +79,5 @@ dependencies {
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
     implementation ("com.google.firebase:firebase-database")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 }
