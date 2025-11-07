@@ -41,13 +41,10 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_temperature_history);
 
-        btnBack = findViewById(R.id.btnBack);
-        btnLogout = findViewById(R.id.btnLogout);
 
         temperatureRecyclerView = findViewById(R.id.temperatureRecyclerView);
         temperatureRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        TitleTextView = findViewById(R.id.titleTextView);
         List<TemperatureRecord> temperatureHistory = getTemperatureHistory();
         temperatureAdapter = new TemperatureAdapter(temperatureHistory);
         temperatureAdapter = new TemperatureAdapter(temperatureHistory);

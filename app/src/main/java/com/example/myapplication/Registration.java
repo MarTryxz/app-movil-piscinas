@@ -67,7 +67,7 @@ public class Registration extends AppCompatActivity {
                 password = textInputEditTextPassword.getText().toString().trim();
 
                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/register.php";
+                String url = "http://192.168.1.6/backendpiscina/register.php";
 
 
                 StringRequest stringRequest = new StringRequest(Request.Method.POST, url,

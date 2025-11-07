@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchDashboardData() {
-        String url = "http://192.168.100.91/backendpiscina/datos_main.php";
+        String url = "http://192.168.1.6/backendpiscina/datos_main.php";
 
         StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
