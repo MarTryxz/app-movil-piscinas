@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">AquaGuardApp</string>
     <string name="login">Login</string>
     <string name="enter_email">Enter Email</string>
     <string name="enter_password">Enter Password</string>

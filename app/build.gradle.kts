@@ -2,7 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.gms.google.services)
 }
+
 
 android {
     namespace = "com.example.myapplication"
@@ -16,6 +18,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildFeatures {
+        viewBinding = true
     }
 
     buildTypes {
@@ -40,7 +45,16 @@ android {
     }
 }
 
+// C:/workspace/androidStudio/app-movil-piscinas/app/build.gradle.kts
+
+// ... existing code ...
+
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    // Add the Firebase Authentication dependency here
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.android.material:material:1.12.0")
     implementation("com.android.volley:volley:1.2.1")
     implementation(libs.appcompat)
     implementation(libs.material)
@@ -56,6 +70,7 @@ dependencies {
     implementation(libs.ui.graphics)
     implementation(libs.ui.tooling.preview)
     implementation(libs.material3)
+    implementation(libs.firebase.database) // Already there for Realtime Database
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -63,4 +78,6 @@ dependencies {
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
+    implementation ("com.google.firebase:firebase-database")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 }

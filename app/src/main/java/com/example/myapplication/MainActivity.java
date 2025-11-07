@@ -1,307 +1,206 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
+// import android.content.SharedPreferences; // Ya no se usa para la sesión
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.content.SharedPreferences;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import com.example.myapplication.databinding.ActivityMainBinding;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.HashMap;
-import java.util.Map;
+// --- AÑADIR IMPORTACIONES DE FIREBASE AUTH ---
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+// ---
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class MainActivity extends AppCompatActivity {
-    TextView textViewName, textViewTemperature, textViewPh, pumpScheduleTextView;
-    SharedPreferences sharedPreferences;
-    Button buttonLogout;
-    ImageButton userSettingsButton;
-    Button modifyScheduleButton, updateDataTemperatura, updateDataPh;
-    String temperatura, ph;
-    LinearLayout cardTemp, cardPh;
 
+    private ActivityMainBinding binding;
+    // private SharedPreferences sharedPreferences; // Eliminado
+
+    // --- AÑADIR FIREBASE AUTH ---
+    private FirebaseAuth mAuth;
+
+    private DatabaseReference databaseReference;
+    private ValueEventListener lecturasListener;
+
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             return insets;
         });
-        pumpScheduleTextView = findViewById(R.id.pumpScheduleTextView);
-        cardTemp = findViewById(R.id.TempCard);
-        cardPh = findViewById(R.id.PhCard);
 
-        updateDataTemperatura = findViewById(R.id.refreshTemperatureButton);
-        updateDataPh = findViewById(R.id.refreshPhButton);
+        // --- INICIALIZAR FIREBASE AUTH ---
+        mAuth = FirebaseAuth.getInstance();
 
-        textViewTemperature = findViewById(R.id.poolTemperatureTextView);
-        textViewPh = findViewById(R.id.phLevelTextView);
-
-        textViewName = findViewById(R.id.name);
-        buttonLogout = findViewById(R.id.logout);
-        userSettingsButton = findViewById(R.id.userSettingsButton);
-        modifyScheduleButton = findViewById(R.id.modifyScheduleButton); // Iniciando el botón Modificar
-
+        // --- BLOQUE DE SESIÓN DE SHARED PREFERENCES (ELIMINADO) ---
+        /*
         sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-
-        if (sharedPreferences.getString("logged", "false").equals("false") || sharedPreferences.getString("name", "").equals("")) {
+        if (sharedPreferences.getString("logged", "false").equals("false") || sharedPreferences.getString("name", "").isEmpty()) {
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
             finish();
+            return;
+        }
+        */
+        // --- FIN DE LA ELIMINACIÓN ---
+
+
+        // Configurar etiquetas de los medidores (esto está bien)
+        binding.phGauge.tvGaugeLabel.setText("Nivel de pH");
+        binding.tempGauge.tvGaugeLabel.setText("Temp. Agua");
+        binding.tempAireGauge.tvGaugeLabel.setText("Temp. Aire");
+        binding.humedadAireGauge.tvGaugeLabel.setText("Humedad Aire");
+
+        // Inicializar Firebase y apuntar al nodo "lecturas"
+        databaseReference = FirebaseDatabase.getInstance().getReference("lecturas");
+
+        // Definir el listener que reaccionará a los cambios
+        setupFirebaseListener();
+
+        // Configurar el listener de la barra de navegación
+        setupBottomNavigation();
+    }
+
+    // --- onStart() MODIFICADO ---
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // --- AÑADIR NUEVA COMPROBACIÓN DE SESIÓN ---
+        // Este es el lugar correcto. Se ejecuta cada vez que la pantalla se vuelve visible.
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if(currentUser == null){
+            // No hay usuario logueado en Firebase, regresamos a Login.
+            Intent intent = new Intent(getApplicationContext(), Login.class);
+            startActivity(intent);
+            finish(); // Cerramos MainActivity
+            return; // Detenemos la ejecución de onStart
         }
 
-        textViewName.setText("👋 ¡Hola, " + sharedPreferences.getString("name", "") + "! 🏊");
+        // Si el usuario SÍ está logueado, adjuntamos el listener de la base de datos
+        if (databaseReference != null && lecturasListener != null) {
+            databaseReference.addValueEventListener(lecturasListener);
+        }
+    }
 
-        RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-        String url = "http://192.168.100.91/backendpiscina/datos_main.php";
+    // onStop (Sin cambios)
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (databaseReference != null && lecturasListener != null) {
+            databaseReference.removeEventListener(lecturasListener);
+        }
+    }
 
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        Log.d("Response", response); // Depuración
-                        try {
-                            JSONObject jsonObject = new JSONObject(response);
-                            String status = jsonObject.getString("status");
-                            if (status.equals("success")) {
-
-
-                                temperatura = jsonObject.getString("temperatura");
-                                ph = jsonObject.getString("ph");
-                                textViewTemperature.setText(temperatura + "°");
-                                textViewPh.setText(ph);
-                                String schedule1 = jsonObject.getString("hora_inicio");
-                                String schedule2 = jsonObject.getString("hora_fin");
-                                pumpScheduleTextView.setText(schedule1+" - "+schedule2);
-
-                            } else {
-                                String message = jsonObject.getString("message");
-                                Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show();
-                            }
-                        } catch (JSONException e) {
-                            Toast.makeText(MainActivity.this, "Error de respuesta: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                        }
-                    }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Toast.makeText(MainActivity.this, "Error de conexión: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                }) {
+    // setupFirebaseListener (Sin cambios, ya está correcto para 4 valores)
+    private void setupFirebaseListener() {
+        lecturasListener = new ValueEventListener() {
+            @SuppressLint("SetTextI18n")
             @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<>();
-                params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                return params;
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    Double tempAgua = snapshot.child("tempAgua").getValue(Double.class);
+                    Double ph = snapshot.child("phVoltaje").getValue(Double.class);
+                    Double tempAire = snapshot.child("tempAire").getValue(Double.class);
+                    Double humedadAire = snapshot.child("humedadAire").getValue(Double.class);
+
+                    if (tempAgua != null && ph != null && tempAire != null && humedadAire != null) {
+                        String tempAguaStr = String.format("%.1f", tempAgua);
+                        String phStr = String.format("%.2f", ph);
+                        String tempAireStr = String.format("%.1f", tempAire);
+                        String humedadAireStr = String.format("%.1f", humedadAire);
+
+                        binding.tempGauge.tvGaugeValue.setText(tempAguaStr + "°");
+                        binding.phGauge.tvGaugeValue.setText(phStr);
+                        binding.tempAireGauge.tvGaugeValue.setText(tempAireStr + "°");
+                        binding.humedadAireGauge.tvGaugeValue.setText(humedadAireStr + "%");
+
+                        updateGaugeProgress(tempAguaStr, phStr, tempAireStr, humedadAireStr);
+                    }
+                } else {
+                    Log.w("Firebase", "El nodo 'lecturas' no existe");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.w("FirebaseError", "Fallo al leer los datos.", error.toException());
+                Toast.makeText(MainActivity.this, "Error al leer datos de Firebase", Toast.LENGTH_SHORT).show();
             }
         };
+    }
 
-        queue.add(stringRequest);
-
-        updateDataTemperatura.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/datos_main.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
-                                Log.d("Response", response); // Depuración
-                                try {
-                                    JSONObject jsonObject = new JSONObject(response);
-                                    String status = jsonObject.getString("status");
-                                    if (status.equals("success")) {
-                                        temperatura = jsonObject.getString("temperatura");
-
-                                        textViewTemperature.setText(temperatura + "°");
-                                    } else {
-                                        String message = jsonObject.getString("message");
-                                        Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show();
-                                    }
-                                } catch (JSONException e) {
-                                    Toast.makeText(MainActivity.this, "Error procesando respuesta: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                                }
-                            }
-                        },
-                        new Response.ErrorListener() {
-                            @Override
-                            public void onErrorResponse(VolleyError error) {
-                                Toast.makeText(MainActivity.this, "Error de conexión: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                            }
-                        }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        return params;
-                    }
-                };
-
-                queue.add(stringRequest);
+    // setupBottomNavigation (Sin cambios)
+    private void setupBottomNavigation() {
+        binding.bottomNavigation.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_monitor) {
+                return true;
+            } else if (itemId == R.id.nav_history) {
+                Intent intent = new Intent(getApplicationContext(), TemperatureHistoryActivity.class);
+                startActivity(intent);
+                return true;
+            } else if (itemId == R.id.nav_profile) {
+                Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
+                startActivity(intent);
+                return true;
+            } else if (itemId == R.id.nav_help) {
+                Toast.makeText(this, "Pantalla de Ayuda (próximamente)", Toast.LENGTH_SHORT).show();
+                return true;
             }
+            return false;
         });
-        updateDataPh.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/datos_main.php";
+    }
 
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
-                                Log.d("Response", response); // Depuración
-                                try {
-                                    JSONObject jsonObject = new JSONObject(response);
-                                    String status = jsonObject.getString("status");
-                                    if (status.equals("success")) {
-                                        ph = jsonObject.getString("ph");
+    // updateGaugeProgress (Sin cambios, ya está correcto para 4 valores)
+    private void updateGaugeProgress(String tempAguaStr, String phStr, String tempAireStr, String humedadAireStr) {
+        try {
+            float tempAgua = Float.parseFloat(tempAguaStr);
+            float ph = Float.parseFloat(phStr);
+            float tempAire = Float.parseFloat(tempAireStr);
+            float humedadAire = Float.parseFloat(humedadAireStr);
 
-                                        textViewPh.setText(ph);
-                                    } else {
-                                        String message = jsonObject.getString("message");
-                                        Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show();
-                                    }
-                                } catch (JSONException e) {
-                                    Toast.makeText(MainActivity.this, "Error procesando respuesta: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                                }
-                            }
-                        },
-                        new Response.ErrorListener() {
-                            @Override
-                            public void onErrorResponse(VolleyError error) {
-                                Toast.makeText(MainActivity.this, "Error de conexión: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                            }
-                        }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        return params;
-                    }
-                };
+            int tempAguaMax = 40;
+            binding.tempGauge.gaugeProgressBar.setMax(tempAguaMax);
+            binding.tempGauge.gaugeProgressBar.setProgress((int) tempAgua);
 
-                queue.add(stringRequest);
-            }
-        });
-        //aqui empieza el boton para cerrar la sesion
-        buttonLogout.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String email = sharedPreferences.getString("email", "");
-                String apiKey = sharedPreferences.getString("apiKey", "");
+            int phMax = 140;
+            binding.phGauge.gaugeProgressBar.setMax(phMax);
+            binding.phGauge.gaugeProgressBar.setProgress((int) (ph * 10));
 
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/logout.php";
+            int tempAireMax = 40;
+            binding.tempAireGauge.gaugeProgressBar.setMax(tempAireMax);
+            binding.tempAireGauge.gaugeProgressBar.setProgress((int) tempAire);
 
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
+            int humedadAireMax = 100;
+            binding.humedadAireGauge.gaugeProgressBar.setMax(humedadAireMax);
+            binding.humedadAireGauge.gaugeProgressBar.setProgress((int) humedadAire);
 
-                                if (response.equals("success")) {
-                                    SharedPreferences.Editor editor = sharedPreferences.edit();
-                                    editor.putString("logged", "false");
-                                    editor.putString("name", "");
-                                    editor.putString("lastName", "");
-                                    editor.putString("email", "");
-                                    editor.putString("phone", "");
-                                    editor.putString("password", "");
-                                    editor.putString("apiKey", "");
-                                    editor.putString("id_cliente", "");
-                                    editor.apply();
-
-                                    Intent intent = new Intent(getApplicationContext(), Login.class);
-                                    startActivity(intent);
-                                    finish();
-                                } else {
-                                    Toast.makeText(MainActivity.this, response, Toast.LENGTH_SHORT).show();
-                                    SharedPreferences.Editor editor = sharedPreferences.edit();
-                                    editor.putString("logged", "true");
-                                    editor.putString("name", "");
-                                    editor.putString("lastName", "");
-                                    editor.putString("email", "");
-                                    editor.putString("phone", "");
-                                    editor.putString("password", "");
-                                    editor.putString("apiKey", "");
-                                    editor.putString("id_cliente", "");
-                                    editor.apply();
-
-                                    Intent intent = new Intent(getApplicationContext(), Login.class);
-                                    startActivity(intent);
-                                    finish();
-                                }
-                            }
-                        }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-                        params.put("email", MainActivity.this.sharedPreferences.getString("email", ""));
-                        params.put("apiKey", MainActivity.this.sharedPreferences.getString("apiKey", ""));
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
-            }
-        });
-
-        // Aquí se configura el botón para ir a la pantalla de editar perfil
-        userSettingsButton.setOnClickListener(view -> {
-            Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
-            startActivity(intent);
-            finish();
-        });
-
-        // Aquí se configura el botón para ir a PumpTimerSettingsActivity
-        modifyScheduleButton.setOnClickListener(v -> {
-            // Cuando el botón Modificar sea presionado, se abrirá PumpTimerSettingsActivity
-            Intent intent = new Intent(getApplicationContext(), PumpTimerSettingsActivity.class);
-            startActivity(intent);
-        });
-
-        // Aquí se configura el botón para ir a temperatura
-        cardTemp.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), TemperatureHistoryActivity.class);
-            startActivity(intent);
-        });
-
-        // Aquí se configura el botón para ir a la vista del ph
-        cardPh.setOnClickListener(v -> {
-            // Cuando el botón Modificar sea presionado, se abrirá PumpTimerSettingsActivity
-            Intent intent = new Intent(getApplicationContext(), PhView.class);
-            startActivity(intent);
-        });
+        } catch (NumberFormatException e) {
+            Log.e("GaugeError", "No se pudo convertir el valor para la barra de progreso", e);
+        }
     }
 }

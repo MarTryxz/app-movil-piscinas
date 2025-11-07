@@ -92,7 +92,7 @@ public class PumpTimerSettingsActivity extends AppCompatActivity {
 
         // Realizar la solicitud al servidor para guardar la configuración
         RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-        String url = "http://192.168.100.91/backendpiscina/savePumpTimerConfig.php";
+        String url = "http://192.168.1.6/backendpiscina/savePumpTimerConfig.php";
 
         StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
@@ -134,7 +134,7 @@ public class PumpTimerSettingsActivity extends AppCompatActivity {
 
         // Realizar la petición de cierre de sesión al servidor
         RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-        String url = "http://192.168.100.91/backendpiscina/logout.php";
+        String url = "http://192.168.1.6/backendpiscina/logout.php";
 
         StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
