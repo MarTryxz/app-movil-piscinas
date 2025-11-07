@@ -16,6 +16,7 @@ activityCompose = "1.9.3"
 composeBom = "2024.04.01"
 googleGmsGoogleServices = "4.4.4"
 firebaseDatabase = "22.0.1"
+firebase-database-ktx = { group = "com.google.firebase", name = "firebase-database-ktx", version.ref = "firebaseDatabase" }
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
