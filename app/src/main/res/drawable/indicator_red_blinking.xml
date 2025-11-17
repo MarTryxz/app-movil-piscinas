@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/on"
+        android:state_checked="true">
+        <shape android:shape="oval">
+            <solid android:color="#FF5252" />
+            <size
+                android:width="24dp"
+                android:height="24dp" />
+        </shape>
+    </item>
+    <item
+        android:id="@+id/off"
+        android:state_checked="false">
+        <shape android:shape="oval">
+            <solid android:color="#BDBDBD" />
+            <size
+                android:width="24dp"
+                android:height="24dp" />
+        </shape>
+    </item>
+    <transition
+        android:fromId="@+id/off"
+        android:toId="@+id/on">
+        <animation-list>
+            <item android:duration="500">
+                <shape android:shape="oval">
+                    <solid android:color="#FF5252" />
+                    <size
+                        android:width="24dp"
+                        android:height="24dp" />
+                </shape>
+            </item>
+            <item android:duration="500">
+                <shape android:shape="oval">
+                    <solid android:color="#BDBDBD" />
+                    <size
+                        android:width="24dp"
+                        android:height="24dp" />
+                </shape>
+            </item>
+        </animation-list>
+    </transition>
+</animated-selector>
