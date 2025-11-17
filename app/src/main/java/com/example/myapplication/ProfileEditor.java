@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -48,10 +49,10 @@ public class ProfileEditor extends AppCompatActivity {
     private FirebaseUser currentUser;
     private String uid;
 
-    // --- Vistas (sin cambios) ---
+    // --- Vistas ---
     TextView TextViewName;
     TextInputEditText editName, inputLastName, inputEmail, inputPassword, inputPhone;
-    Button buttonLogout, buttonEditName, btnBack, buttonEditLastName, buttonEditEmail, buttonEditPassword, buttonEditPhone;
+    Button buttonLogout, buttonEditName, buttonEditLastName, buttonEditEmail, buttonEditPassword, buttonEditPhone;
 
     // private SharedPreferences sharedPreferences; // Ya no se usa
 
@@ -60,6 +61,23 @@ public class ProfileEditor extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_profile_editor);
+
+        // Configurar la barra de herramientas
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setDisplayShowHomeEnabled(true);
+        }
+
+        // Manejar el clic en el botón de retroceso
+        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
+            }
+        });
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -78,10 +96,9 @@ public class ProfileEditor extends AppCompatActivity {
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
-        // --- 2. Enlazar Vistas (sin cambios) ---
+        // --- 2. Enlazar Vistas ---
         TextViewName = findViewById(R.id.TextName);
         buttonLogout = findViewById(R.id.btnLogout);
-        btnBack = findViewById(R.id.btnBack);
         buttonEditName = findViewById(R.id.btnEditName);
         editName = findViewById(R.id.editName);
         inputLastName = findViewById(R.id.inputLastName);
@@ -93,17 +110,7 @@ public class ProfileEditor extends AppCompatActivity {
         inputPhone = findViewById(R.id.inputPhone);
         buttonEditPhone = findViewById(R.id.btnEditPhone);
 
-        // --- 3. Lógica de Botones (¡TODO NUEVO!) ---
-
-        // Botón "Volver" (sin cambios, esto está bien)
-        btnBack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        });
+        // --- 3. Lógica de Botones ---
 
         // Botón "Logout" (Lógica de Firebase)
         buttonLogout.setOnClickListener(new View.OnClickListener() {
