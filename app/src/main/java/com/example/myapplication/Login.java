@@ -62,8 +62,6 @@ public class Login extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
 
         // --- 1. Configurar Google Sign-In ---
-        // Necesitamos el 'default_web_client_id' que está en tu google-services.json
-        // R.string.default_web_client_id se genera automáticamente.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
@@ -82,9 +80,15 @@ public class Login extends AppCompatActivity {
                             firebaseAuthWithGoogle(account.getIdToken());
                         } catch (ApiException e) {
                             // Google Sign In falló
-                            Log.w("GoogleSignIn", "Google sign in failed", e);
-                            Toast.makeText(Login.this, "Fallo en el inicio con Google.", Toast.LENGTH_SHORT).show();
+                            Log.e("GoogleSignIn", "Google sign in failed. Status Code: " + e.getStatusCode(), e);
+                            Toast.makeText(Login.this, "Fallo Google. Código: " + e.getStatusCode(), Toast.LENGTH_LONG).show();
+                            binding.loading.setVisibility(View.GONE);
                         }
+                    } else {
+                        // El usuario canceló el inicio de sesión
+                        Log.e("GoogleSignIn", "Google sign in cancelled or failed. ResultCode: " + result.getResultCode());
+                        Toast.makeText(Login.this, "Cancelado/Fallo. ResultCode: " + result.getResultCode(), Toast.LENGTH_SHORT).show();
+                        binding.loading.setVisibility(View.GONE);
                     }
                 });
 
@@ -95,19 +99,6 @@ public class Login extends AppCompatActivity {
                 signInWithGoogle();
             }
         });
-
-
-        // --- 4. Listener del TextView "Register Now" (ELIMINADO) ---
-        /*
-        binding.registerNow.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getApplicationContext(), Registration.class);
-                startActivity(intent);
-                finish();
-            }
-        });
-        */
 
         // --- 5. Listener del botón "Submit" (Email/Password) ---
         binding.submit.setOnClickListener(new View.OnClickListener() {
@@ -168,7 +159,8 @@ public class Login extends AppCompatActivity {
 
                         } else {
                             // If sign in fails
-                            Toast.makeText(Login.this, "Error de autenticación con Firebase.", Toast.LENGTH_SHORT).show();
+                            Log.e("GoogleSignIn", "Firebase Auth failed", task.getException());
+                            Toast.makeText(Login.this, "Fallo Firebase: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         }
                     }
                 });

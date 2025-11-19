@@ -25,8 +25,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private ActivityMainBinding binding;
     // private SharedPreferences sharedPreferences; // Eliminado
@@ -42,9 +43,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        
+        setContentView(R.layout.activity_main);
+        binding = ActivityMainBinding.bind(findViewById(R.id.main));
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -57,16 +58,16 @@ public class MainActivity extends AppCompatActivity {
 
         // --- BLOQUE DE SESIÓN DE SHARED PREFERENCES (ELIMINADO) ---
         /*
-        sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-        if (sharedPreferences.getString("logged", "false").equals("false") || sharedPreferences.getString("name", "").isEmpty()) {
-            Intent intent = new Intent(getApplicationContext(), Login.class);
-            startActivity(intent);
-            finish();
-            return;
-        }
-        */
+         * sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
+         * if (sharedPreferences.getString("logged", "false").equals("false") ||
+         * sharedPreferences.getString("name", "").isEmpty()) {
+         * Intent intent = new Intent(getApplicationContext(), Login.class);
+         * startActivity(intent);
+         * finish();
+         * return;
+         * }
+         */
         // --- FIN DE LA ELIMINACIÓN ---
-
 
         // Configurar etiquetas de los medidores (esto está bien)
         binding.phGauge.tvGaugeLabel.setText("Nivel de pH");
@@ -80,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         // Definir el listener que reaccionará a los cambios
         setupFirebaseListener();
 
-        // Configurar el listener de la barra de navegación
+        // Configurar la navegación inferior
         setupBottomNavigation();
     }
 
@@ -90,9 +91,10 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
 
         // --- AÑADIR NUEVA COMPROBACIÓN DE SESIÓN ---
-        // Este es el lugar correcto. Se ejecuta cada vez que la pantalla se vuelve visible.
+        // Este es el lugar correcto. Se ejecuta cada vez que la pantalla se vuelve
+        // visible.
         FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser == null){
+        if (currentUser == null) {
             // No hay usuario logueado en Firebase, regresamos a Login.
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
@@ -113,6 +115,19 @@ public class MainActivity extends AppCompatActivity {
         if (databaseReference != null && lecturasListener != null) {
             databaseReference.removeEventListener(lecturasListener);
         }
+    }
+
+    // In MainActivity.java, add this method outside of any other methods
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        
+        if (id == R.id.nav_help) {
+            startActivity(new Intent(this, HelpActivity.class));
+            return true;
+        }
+        
+        return super.onOptionsItemSelected(item);
     }
 
     // setupFirebaseListener (Sin cambios, ya está correcto para 4 valores)
@@ -150,29 +165,9 @@ public class MainActivity extends AppCompatActivity {
                 Log.w("FirebaseError", "Fallo al leer los datos.", error.toException());
                 Toast.makeText(MainActivity.this, "Error al leer datos de Firebase", Toast.LENGTH_SHORT).show();
             }
-        };
-    }
 
-    // setupBottomNavigation (Sin cambios)
-    private void setupBottomNavigation() {
-        binding.bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_monitor) {
-                return true;
-            } else if (itemId == R.id.nav_history) {
-                Intent intent = new Intent(getApplicationContext(), TemperatureHistoryActivity.class);
-                startActivity(intent);
-                return true;
-            } else if (itemId == R.id.nav_profile) {
-                Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
-                startActivity(intent);
-                return true;
-            } else if (itemId == R.id.nav_help) {
-                Toast.makeText(this, "Pantalla de Ayuda (próximamente)", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-            return false;
-        });
+            
+        };
     }
 
     // updateGaugeProgress (Sin cambios, ya está correcto para 4 valores)
