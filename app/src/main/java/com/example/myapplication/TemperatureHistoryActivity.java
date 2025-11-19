@@ -23,7 +23,7 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TemperatureHistoryActivity extends AppCompatActivity {
+public class TemperatureHistoryActivity extends BaseActivity {
 
     private ActivityTemperatureHistoryBinding binding;
     private FirebaseAuth mAuth;
@@ -34,8 +34,8 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_temperature_history);
         binding = ActivityTemperatureHistoryBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
 
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
@@ -46,11 +46,8 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
         binding.temperatureRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.temperatureRecyclerView.setAdapter(temperatureAdapter);
 
-        // 1. Lógica de navegación inferior
+        // Configurar la navegación inferior
         setupBottomNavigation();
-
-        // 2. Cargar historial de temperaturas (SE MOVIÓ A onStart())
-        // loadTemperatureHistory(); // <-- Ya no se llama aquí
     }
 
     // --- AÑADIMOS onStart() PARA VERIFICAR LA SESIÓN ---
@@ -70,34 +67,7 @@ public class TemperatureHistoryActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Configura el listener para la barra de navegación inferior.
-     */
-    private void setupBottomNavigation() {
-        // Marcamos "Historial" como el ítem seleccionado en esta actividad
-        binding.bottomNavigation.setSelectedItemId(R.id.nav_history);
-
-        binding.bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_monitor) {
-                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                startActivity(intent);
-                finish();
-                return true;
-            } else if (itemId == R.id.nav_history) {
-                return true;
-            } else if (itemId == R.id.nav_profile) {
-                Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
-                startActivity(intent);
-                finish();
-                return true;
-            } else if (itemId == R.id.nav_help) {
-                Toast.makeText(this, "Pantalla de Ayuda (próximamente)", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-            return false;
-        });
-    }
+    // La navegación se maneja en BaseActivity
 
     /**
      * Carga los registros de temperatura (MODIFICADO)

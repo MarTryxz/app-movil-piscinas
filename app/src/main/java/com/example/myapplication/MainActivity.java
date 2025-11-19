@@ -27,7 +27,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private ActivityMainBinding binding;
     // private SharedPreferences sharedPreferences; // Eliminado
@@ -43,9 +43,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        
+        setContentView(R.layout.activity_main);
+        binding = ActivityMainBinding.bind(findViewById(R.id.main));
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         // Definir el listener que reaccionará a los cambios
         setupFirebaseListener();
 
-        // Configurar el listener de la barra de navegación
+        // Configurar la navegación inferior
         setupBottomNavigation();
     }
 
@@ -168,26 +168,6 @@ public class MainActivity extends AppCompatActivity {
 
             
         };
-    }
-
-    // setupBottomNavigation (Sin cambios)
-    private void setupBottomNavigation() {
-        binding.bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_monitor) {
-                return true;
-            } else if (itemId == R.id.nav_history) {
-                startActivity(new Intent(this, TemperatureHistoryActivity.class));
-                return true;
-            } else if (itemId == R.id.nav_profile) {
-                startActivity(new Intent(this, ProfileEditor.class));
-                return true;
-            } else if (itemId == R.id.nav_help) {
-                startActivity(new Intent(this, HelpActivity.class));
-                return true;
-            }
-            return false;
-        });
     }
 
     // updateGaugeProgress (Sin cambios, ya está correcto para 4 valores)
