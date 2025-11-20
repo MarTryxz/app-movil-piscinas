@@ -1,14 +1,12 @@
 package com.example.myapplication;
 
 import android.content.Intent;
-// import android.content.SharedPreferences; // Ya no es necesario
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.myapplication.databinding.ActivityTemperatureHistoryBinding;
@@ -34,8 +32,10 @@ public class TemperatureHistoryActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_temperature_history);
+
+        // Correct ViewBinding usage
         binding = ActivityTemperatureHistoryBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
@@ -50,13 +50,12 @@ public class TemperatureHistoryActivity extends BaseActivity {
         setupBottomNavigation();
     }
 
-    // --- AÑADIMOS onStart() PARA VERIFICAR LA SESIÓN ---
     @Override
     protected void onStart() {
         super.onStart();
 
         FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser == null){
+        if (currentUser == null) {
             // No hay usuario logueado, ir a Login y salir de esta actividad
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
@@ -67,33 +66,41 @@ public class TemperatureHistoryActivity extends BaseActivity {
         }
     }
 
-    // La navegación se maneja en BaseActivity
-
-    /**
-     * Carga los registros de temperatura (MODIFICADO)
-     * Ahora asume que el usuario está validado y recibe el userId.
-     */
-    private void loadTemperatureHistory(String userId) { // <-- Acepta el userId
-
-        // Ya no necesitamos la comprobación "if (currentUser != null)"
-        // porque onStart() ya la hizo.
-
-        mDatabase.child("temperaturas").child(userId)
+    private void loadTemperatureHistory(String userId) {
+        // Pointing to "sensor_status/historial" as per new requirement
+        mDatabase.child("sensor_status").child("historial")
                 .addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         temperatureHistoryList.clear();
                         if (dataSnapshot.exists()) {
                             for (DataSnapshot recordSnapshot : dataSnapshot.getChildren()) {
-                                TemperatureRecord record = recordSnapshot.getValue(TemperatureRecord.class);
-                                if (record != null) {
+                                // The key is the Push ID (timestamp encoded)
+                                String pushId = recordSnapshot.getKey();
+
+                                // We manually map the fields because the JSON structure matches the fields
+                                // but we need to inject the ID.
+                                Double tempAgua = parseDouble(recordSnapshot.child("tempAgua").getValue());
+                                Double tempAire = parseDouble(recordSnapshot.child("tempAire").getValue());
+                                Double humedadAire = parseDouble(recordSnapshot.child("humedadAire").getValue());
+
+                                if (tempAgua != null && tempAire != null && humedadAire != null) {
+                                    TemperatureRecord record = new TemperatureRecord(
+                                            pushId,
+                                            tempAgua.floatValue(),
+                                            tempAire.floatValue(),
+                                            humedadAire.floatValue());
                                     temperatureHistoryList.add(record);
                                 }
                             }
+                            // Sort list by timestamp descending (newest first)
+                            java.util.Collections.reverse(temperatureHistoryList);
+
                             temperatureAdapter.notifyDataSetChanged();
-                            binding.emptyState.setVisibility(temperatureHistoryList.isEmpty() ? View.VISIBLE : View.GONE);
+                            binding.emptyState
+                                    .setVisibility(temperatureHistoryList.isEmpty() ? View.VISIBLE : View.GONE);
                         } else {
-                            Log.d("TemperatureHistory", "No hay datos de temperatura para este usuario.");
+                            Log.d("TemperatureHistory", "No hay datos de historial.");
                             temperatureAdapter.notifyDataSetChanged();
                             binding.emptyState.setVisibility(View.VISIBLE);
                         }
@@ -102,21 +109,26 @@ public class TemperatureHistoryActivity extends BaseActivity {
                     @Override
                     public void onCancelled(@NonNull DatabaseError databaseError) {
                         Log.e("TemperatureHistory", "Error al leer datos de Firebase: " + databaseError.getMessage());
-                        Toast.makeText(TemperatureHistoryActivity.this, "Error al cargar historial: " + databaseError.getMessage(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(TemperatureHistoryActivity.this,
+                                "Error al cargar historial: " + databaseError.getMessage(), Toast.LENGTH_LONG).show();
                         binding.emptyState.setVisibility(View.VISIBLE);
                     }
                 });
-
-        // La parte "else" que redirigía al Login también se eliminó
-        // porque ya no es necesaria aquí.
     }
 
-    /*
-    public static class TemperatureRecord {
-        public String fechaHora;
-        public float temperatura;
-
-        public TemperatureRecord() { }
+    private Double parseDouble(Object value) {
+        if (value == null)
+            return null;
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
-    */
 }
