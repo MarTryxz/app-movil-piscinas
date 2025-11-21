@@ -2,39 +2,30 @@ package com.example.myapplication;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-// import android.content.SharedPreferences; // Ya no se usa para la sesión
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.databinding.ActivityMainBinding;
-
-// --- AÑADIR IMPORTACIONES DE FIREBASE AUTH ---
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-// ---
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import android.view.MenuItem;
 
 public class MainActivity extends BaseActivity {
 
     private ActivityMainBinding binding;
-    // private SharedPreferences sharedPreferences; // Eliminado
-
-    // --- AÑADIR FIREBASE AUTH ---
     private FirebaseAuth mAuth;
-
     private DatabaseReference databaseReference;
     private ValueEventListener lecturasListener;
 
@@ -43,7 +34,7 @@ public class MainActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        
+
         setContentView(R.layout.activity_main);
         binding = ActivityMainBinding.bind(findViewById(R.id.main));
 
@@ -53,62 +44,32 @@ public class MainActivity extends BaseActivity {
             return insets;
         });
 
-        // --- INICIALIZAR FIREBASE AUTH ---
         mAuth = FirebaseAuth.getInstance();
 
-        // --- BLOQUE DE SESIÓN DE SHARED PREFERENCES (ELIMINADO) ---
-        /*
-         * sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-         * if (sharedPreferences.getString("logged", "false").equals("false") ||
-         * sharedPreferences.getString("name", "").isEmpty()) {
-         * Intent intent = new Intent(getApplicationContext(), Login.class);
-         * startActivity(intent);
-         * finish();
-         * return;
-         * }
-         */
-        // --- FIN DE LA ELIMINACIÓN ---
-
-        // Configurar etiquetas de los medidores (esto está bien)
-        binding.phGauge.tvGaugeLabel.setText("Nivel de pH");
-        binding.tempGauge.tvGaugeLabel.setText("Temp. Agua");
-        binding.tempAireGauge.tvGaugeLabel.setText("Temp. Aire");
-        binding.humedadAireGauge.tvGaugeLabel.setText("Humedad Aire");
-
-        // Inicializar Firebase y apuntar al nodo "lecturas"
-        databaseReference = FirebaseDatabase.getInstance().getReference("lecturas");
-
-        // Definir el listener que reaccionará a los cambios
+        // Initialize Firebase listener setup
         setupFirebaseListener();
 
-        // Configurar la navegación inferior
+        // Setup Bottom Navigation (from BaseActivity)
         setupBottomNavigation();
     }
 
-    // --- onStart() MODIFICADO ---
     @Override
     protected void onStart() {
         super.onStart();
 
-        // --- AÑADIR NUEVA COMPROBACIÓN DE SESIÓN ---
-        // Este es el lugar correcto. Se ejecuta cada vez que la pantalla se vuelve
-        // visible.
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
-            // No hay usuario logueado en Firebase, regresamos a Login.
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
-            finish(); // Cerramos MainActivity
-            return; // Detenemos la ejecución de onStart
+            finish();
+            return;
         }
 
-        // Si el usuario SÍ está logueado, adjuntamos el listener de la base de datos
         if (databaseReference != null && lecturasListener != null) {
             databaseReference.addValueEventListener(lecturasListener);
         }
     }
 
-    // onStop (Sin cambios)
     @Override
     protected void onStop() {
         super.onStop();
@@ -117,30 +78,30 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    // In MainActivity.java, add this method outside of any other methods
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        
+
         if (id == R.id.nav_help) {
             startActivity(new Intent(this, HelpActivity.class));
             return true;
         }
-        
+
         return super.onOptionsItemSelected(item);
     }
 
-    // setupFirebaseListener (Sin cambios, ya está correcto para 4 valores)
     private void setupFirebaseListener() {
+        databaseReference = FirebaseDatabase.getInstance().getReference("sensor_status/actual");
+
         lecturasListener = new ValueEventListener() {
             @SuppressLint("SetTextI18n")
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    Double tempAgua = snapshot.child("tempAgua").getValue(Double.class);
-                    Double ph = snapshot.child("phVoltaje").getValue(Double.class);
-                    Double tempAire = snapshot.child("tempAire").getValue(Double.class);
-                    Double humedadAire = snapshot.child("humedadAire").getValue(Double.class);
+                    Double tempAgua = parseDouble(snapshot.child("tempAgua").getValue());
+                    Double ph = parseDouble(snapshot.child("phVoltaje").getValue());
+                    Double tempAire = parseDouble(snapshot.child("tempAire").getValue());
+                    Double humedadAire = parseDouble(snapshot.child("humedadAire").getValue());
 
                     if (tempAgua != null && ph != null && tempAire != null && humedadAire != null) {
                         String tempAguaStr = String.format("%.1f", tempAgua);
@@ -154,9 +115,11 @@ public class MainActivity extends BaseActivity {
                         binding.humedadAireGauge.tvGaugeValue.setText(humedadAireStr + "%");
 
                         updateGaugeProgress(tempAguaStr, phStr, tempAireStr, humedadAireStr);
+                    } else {
+                        Log.w("Firebase", "Datos incompletos en sensor_status/actual");
                     }
                 } else {
-                    Log.w("Firebase", "El nodo 'lecturas' no existe");
+                    Log.w("Firebase", "El nodo 'sensor_status/actual' no existe");
                 }
             }
 
@@ -165,12 +128,25 @@ public class MainActivity extends BaseActivity {
                 Log.w("FirebaseError", "Fallo al leer los datos.", error.toException());
                 Toast.makeText(MainActivity.this, "Error al leer datos de Firebase", Toast.LENGTH_SHORT).show();
             }
-
-            
         };
     }
 
-    // updateGaugeProgress (Sin cambios, ya está correcto para 4 valores)
+    private Double parseDouble(Object value) {
+        if (value == null)
+            return null;
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     private void updateGaugeProgress(String tempAguaStr, String phStr, String tempAireStr, String humedadAireStr) {
         try {
             float tempAgua = Float.parseFloat(tempAguaStr);
