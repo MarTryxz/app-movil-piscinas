@@ -17,15 +17,15 @@ public abstract class BaseActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
     }
-    
+
     protected void setupBottomNavigation() {
         // Find the bottom navigation view (debe estar en el layout de la actividad)
         bottomNavigation = findViewById(R.id.bottomNavigation);
-        
+
         if (bottomNavigation == null) {
             return; // Si no hay bottom navigation en este layout, no hacer nada
         }
-        
+
         bottomNavigation.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.nav_monitor) {
@@ -46,6 +46,12 @@ public abstract class BaseActivity extends AppCompatActivity {
                     finish();
                 }
                 return true;
+            } else if (itemId == R.id.nav_bluetooth) {
+                if (!(this instanceof BluetoothMacActivity)) {
+                    startActivity(new Intent(this, BluetoothMacActivity.class));
+                    finish();
+                }
+                return true;
             } else if (itemId == R.id.nav_help) {
                 if (!(this instanceof HelpActivity)) {
                     startActivity(new Intent(this, HelpActivity.class));
@@ -55,7 +61,7 @@ public abstract class BaseActivity extends AppCompatActivity {
             }
             return false;
         });
-        
+
         // Set the selected item based on the current activity
         if (this instanceof MainActivity) {
             bottomNavigation.setSelectedItemId(R.id.nav_monitor);
@@ -63,6 +69,8 @@ public abstract class BaseActivity extends AppCompatActivity {
             bottomNavigation.setSelectedItemId(R.id.nav_history);
         } else if (this instanceof ProfileEditor) {
             bottomNavigation.setSelectedItemId(R.id.nav_profile);
+        } else if (this instanceof BluetoothMacActivity) {
+            bottomNavigation.setSelectedItemId(R.id.nav_bluetooth);
         } else if (this instanceof HelpActivity) {
             bottomNavigation.setSelectedItemId(R.id.nav_help);
         }
