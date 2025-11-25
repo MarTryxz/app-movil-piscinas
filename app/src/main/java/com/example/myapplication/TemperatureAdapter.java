@@ -28,8 +28,22 @@ public class TemperatureAdapter extends RecyclerView.Adapter<TemperatureAdapter.
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         TemperatureRecord record = temperatureHistory.get(position);
-        holder.dateTextView.setText(record.getDate());
-        holder.temperatureTextView.setText(String.format("%.1f°C", record.getTemperature()));
+
+        // Format timestamp to date
+        long timestamp = record.getTimestamp();
+        String dateStr;
+        if (timestamp > 0) {
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm",
+                    java.util.Locale.getDefault());
+            dateStr = sdf.format(new java.util.Date(timestamp));
+        } else {
+            dateStr = "Desconocido";
+        }
+
+        holder.dateTextView.setText(dateStr);
+        holder.tempAguaTextView.setText(String.format("Agua: %.1f°C", record.getTempAgua()));
+        holder.tempAireTextView.setText(String.format("Aire: %.1f°C", record.getTempAire()));
+        holder.humedadTextView.setText(String.format("Hum: %.1f%%", record.getHumedadAire()));
     }
 
     @Override
@@ -39,13 +53,16 @@ public class TemperatureAdapter extends RecyclerView.Adapter<TemperatureAdapter.
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView dateTextView;
-        TextView temperatureTextView;
+        TextView tempAguaTextView;
+        TextView tempAireTextView;
+        TextView humedadTextView;
 
         ViewHolder(View itemView) {
             super(itemView);
             dateTextView = itemView.findViewById(R.id.dateTextView);
-            temperatureTextView = itemView.findViewById(R.id.temperatureTextView);
+            tempAguaTextView = itemView.findViewById(R.id.tempAguaTextView);
+            tempAireTextView = itemView.findViewById(R.id.tempAireTextView);
+            humedadTextView = itemView.findViewById(R.id.humedadTextView);
         }
     }
 }
-

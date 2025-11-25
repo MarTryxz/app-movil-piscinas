@@ -1,538 +1,290 @@
 package com.example.myapplication;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
+// import android.content.SharedPreferences; // Ya no se usa para la sesión
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+// --- ELIMINAMOS TODAS LAS IMPORTACIONES DE VOLLEY ---
+// import com.android.volley.Request;
+// ... (etc)
+
+// --- AÑADIMOS LAS IMPORTACIONES DE FIREBASE AUTH, GOOGLE Y DATABASE ---
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.example.myapplication.databinding.ActivityProfileEditorBinding;
 
-public class ProfileEditor extends AppCompatActivity {
-    SharedPreferences sharedPreferences;
+public class ProfileEditor extends BaseActivity {
+
+    private ActivityProfileEditorBinding binding;
+
+    // --- Variables de Firebase ---
+    private FirebaseAuth mAuth;
+    private GoogleSignInClient mGoogleSignInClient;
+    private DatabaseReference mDatabase;
+    private FirebaseUser currentUser;
+    private String uid;
+
+    // --- Vistas ---
     TextView TextViewName;
     TextInputEditText editName, inputLastName, inputEmail, inputPassword, inputPhone;
-    Button buttonLogout, buttonEditName, btnBack, buttonEditLastName, buttonEditEmail, buttonEditPassword, buttonEditPhone;
-    String name, lastname, email, password, phone;
+    Button buttonLogout, buttonEditName, buttonEditLastName, buttonEditEmail, buttonEditPassword, buttonEditPhone;
+
+    // private SharedPreferences sharedPreferences; // Ya no se usa
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_profile_editor);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
+        // --- 1. Inicializar Firebase ---
+        mAuth = FirebaseAuth.getInstance();
+        // Asumimos que guardaremos/leeremos datos extra (apellido, teléfono) en un nodo "users"
+        mDatabase = FirebaseDatabase.getInstance().getReference("users");
+
+        // Configurar Google Sign-In Client (necesario para el logout de Google)
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        // --- 2. Enlazar Vistas ---
         TextViewName = findViewById(R.id.TextName);
         buttonLogout = findViewById(R.id.btnLogout);
-        btnBack = findViewById(R.id.btnBack);
-
         buttonEditName = findViewById(R.id.btnEditName);
         editName = findViewById(R.id.editName);
-
         inputLastName = findViewById(R.id.inputLastName);
         buttonEditLastName = findViewById(R.id.btnEditLastName);
-
         inputEmail = findViewById(R.id.inputEmail);
         buttonEditEmail = findViewById(R.id.btnEditEmail);
-
         inputPassword = findViewById(R.id.inputPassword);
         buttonEditPassword = findViewById(R.id.btnEditPassword);
-
         inputPhone = findViewById(R.id.inputPhone);
         buttonEditPhone = findViewById(R.id.btnEditPhone);
 
-        sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
+        // --- 3. Lógica de Botones ---
 
-        TextViewName.setText("👋 Esta ventana es para editar tus datos, "+sharedPreferences.getString("name", "")+" 🔐");
-        editName.setText(sharedPreferences.getString("name", ""));
-        inputLastName.setText(sharedPreferences.getString("lastName", ""));
-        inputEmail.setText(sharedPreferences.getString("email", ""));
-        inputPhone.setText(sharedPreferences.getString("phone", ""));
-
-        buttonEditPassword.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                password = inputPassword.getText().toString().trim();
-
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String apiKey = sharedPreferences.getString("apiKey", "");
-
-                //esto es para saber si estan vacias las variables
-                if (apiKey.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "No data user found", Toast.LENGTH_SHORT).show();
-                    return;
-                } else if (password.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "data field empty", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if (response.equals("success")) {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("lastName", "");
-                            editor.putString("email", "");
-                            editor.putString("phone", "");
-                            editor.putString("password", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("id_cliente", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("lastName", "");
-                            editor.putString("email", "");
-                            editor.putString("phone", "");
-                            editor.putString("password", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("id_cliente", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        }
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-
-                        params.put("password", password);
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        String caso4 = "4";
-                        params.put("caso", caso4);
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
-            }
-        });
-
-        //aqui empieza el boton para editar el telefono del usuario
-        buttonEditPhone.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                phone = inputPhone.getText().toString().trim();
-
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String apiKey = sharedPreferences.getString("apiKey", "");
-
-                //esto es para saber si estan vacias las variables
-                if (apiKey.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "No data user found", Toast.LENGTH_SHORT).show();
-                    return;
-                } else if (phone.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "data field empty", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if (response.equals("success")) {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        }
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-
-                        params.put("phone", phone);
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        String caso5 = "5";
-                        params.put("caso", caso5);
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
-            }
-        });
-
-        //aqui empieza el boton para editar el email del usuario
-        buttonEditEmail.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                email = inputEmail.getText().toString().trim();
-
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String apiKey = sharedPreferences.getString("apiKey", "");
-
-                //esto es para saber si estan vacias las variables
-                if (apiKey.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "No data user found", Toast.LENGTH_SHORT).show();
-                    return;
-                } else if (email.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "data field empty", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if (response.equals("success")) {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        }
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-
-                        params.put("email", email);
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        String caso3 = "3";
-                        params.put("caso", caso3);
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
-            }
-        });
-
-        //aqui empieza el boton para editar el apellido del usuario
-        buttonEditLastName.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                lastname = inputLastName.getText().toString().trim();
-
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String apiKey = sharedPreferences.getString("apiKey", "");
-
-                //esto es para saber si estan vacias las variables
-                if (apiKey.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "No data user found", Toast.LENGTH_SHORT).show();
-                    return;
-                } else if (lastname.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "data field empty", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if (response.equals("success")) {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        }
-
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-
-                        params.put("lastname", lastname);
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        String caso2 = "2";
-                        params.put("caso", caso2);
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
-            }
-        });
-
-        //aqui empieza el boton para editar el nombre del usuario
-        buttonEditName.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                name = editName.getText().toString().trim();
-
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String apiKey = sharedPreferences.getString("apiKey", "");
-
-                //esto es para saber si estan vacias las variables
-                if (apiKey.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "No data user found", Toast.LENGTH_SHORT).show();
-                    return;
-                } else if (name.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "data field empty", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/editar/update-m.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if (response.equals("success")) {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putString("logged", "false");
-                            editor.putString("name", "");
-                            editor.putString("email", "");
-                            editor.putString("apiKey", "");
-                            editor.putString("phone", "");
-                            editor.putString("lastName", "");
-                            editor.apply();
-
-                            Intent intent = new Intent(getApplicationContext(), Login.class);
-                            startActivity(intent);
-                            finish();
-                        }
-
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-
-                        params.put("name", name);
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        String caso1 = "1";
-                        params.put("caso", caso1);
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
-            }
-        });
-
-        //aqui empieza el boton para cerrar la sesion
+        // Botón "Logout" (Lógica de Firebase)
         buttonLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //esto es para obtener los datos del usuario que el coloco en el login (copiado y pegado de chatgpt)
-                SharedPreferences sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
-                String email = sharedPreferences.getString("email", "");
-                String apiKey = sharedPreferences.getString("apiKey", "");
+                // 1. Cierra sesión de Firebase
+                mAuth.signOut();
 
-                //esto es para saber si estan vacias las variables
-                if (email.isEmpty() || apiKey.isEmpty()) {
-                    Toast.makeText(ProfileEditor.this, "No data user found", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                // 2. Cierra sesión de Google
+                mGoogleSignInClient.signOut().addOnCompleteListener(ProfileEditor.this, task -> {
 
-                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                String url = "http://192.168.100.91/backendpiscina/logout.php";
-
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
-
-                                if (response.equals("success")) {
-                                    SharedPreferences.Editor editor = sharedPreferences.edit();
-                                    editor.putString("logged", "false");
-                                    editor.putString("name", "");
-                                    editor.putString("email", "");
-                                    editor.putString("apiKey", "");
-                                    editor.putString("phone", "");
-                                    editor.putString("lastName", "");
-                                    editor.apply();
-
-                                    Intent intent = new Intent(getApplicationContext(), Login.class);
-                                    startActivity(intent);
-                                    finish();
-                                } else {
-                                    Toast.makeText(ProfileEditor.this, response, Toast.LENGTH_SHORT).show();
-                                    SharedPreferences.Editor editor = sharedPreferences.edit();
-                                    editor.putString("logged", "false");
-                                    editor.putString("name", "");
-                                    editor.putString("email", "");
-                                    editor.putString("apiKey", "");
-                                    editor.putString("phone", "");
-                                    editor.putString("password", "");
-                                    editor.putString("lastName", "");
-                                    editor.apply();
-
-                                    Intent intent = new Intent(getApplicationContext(), Login.class);
-                                    startActivity(intent);
-                                    finish();
-                                }
-                            }
-                        }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                    }
-                }) {
-                    @Override
-                    protected Map<String, String> getParams() {
-                        Map<String, String> params = new HashMap<>();
-                        params.put("email", sharedPreferences.getString("email", ""));
-                        params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                        return params;
-                    }
-                };
-                queue.add(stringRequest);
+                    // 3. Redirige a Login y limpia el historial
+                    Intent intent = new Intent(getApplicationContext(), Login.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                });
             }
         });
 
-        //aqui empieza el boton para ir al menu principal
-        btnBack.setOnClickListener(new View.OnClickListener() {
+        // Botón "Editar Nombre"
+        buttonEditName.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                startActivity(intent);
-                finish();
+            public void onClick(View v) {
+                String newName = editName.getText().toString().trim();
+                if (newName.isEmpty()) {
+                    Toast.makeText(ProfileEditor.this, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (currentUser != null) {
+                    UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                            .setDisplayName(newName)
+                            .build();
+
+                    currentUser.updateProfile(profileUpdates)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(ProfileEditor.this, "Nombre actualizado con éxito", Toast.LENGTH_SHORT).show();
+                                    TextViewName.setText("👋 ¡Hola, " + newName + "! 👤");
+                                } else {
+                                    Toast.makeText(ProfileEditor.this, "Error al actualizar el nombre", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                }
+            }
+        });
+
+        // Botón "Editar Apellido" (Usa Realtime Database)
+        buttonEditLastName.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String newLastName = inputLastName.getText().toString().trim();
+                if (uid != null && !newLastName.isEmpty()) {
+                    mDatabase.child(uid).child("lastName").setValue(newLastName)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(ProfileEditor.this, "Apellido actualizado con éxito", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(ProfileEditor.this, "Error al guardar el apellido", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                }
+            }
+        });
+
+        // Botón "Editar Email"
+        buttonEditEmail.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String newEmail = inputEmail.getText().toString().trim();
+                if (newEmail.isEmpty()) {
+                    Toast.makeText(ProfileEditor.this, "El email no puede estar vacío", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (currentUser != null) {
+                    currentUser.updateEmail(newEmail)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(ProfileEditor.this, "Email actualizado. Revisa tu correo para verificar.", Toast.LENGTH_LONG).show();
+                                } else {
+                                    Toast.makeText(ProfileEditor.this, "Error al actualizar email: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                                }
+                            });
+                }
+            }
+        });
+
+        // Botón "Editar Contraseña"
+        buttonEditPassword.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String newPassword = inputPassword.getText().toString().trim();
+                if (newPassword.length() < 6) {
+                    Toast.makeText(ProfileEditor.this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (currentUser != null) {
+                    currentUser.updatePassword(newPassword)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(ProfileEditor.this, "Contraseña actualizada con éxito", Toast.LENGTH_SHORT).show();
+                                    inputPassword.setText("");
+                                } else {
+                                    Toast.makeText(ProfileEditor.this, "Error al actualizar contraseña: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                                }
+                            });
+                }
+            }
+        });
+
+        // Botón "Editar Teléfono" (Usa Realtime Database)
+        buttonEditPhone.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String newPhone = inputPhone.getText().toString().trim();
+                if (uid != null && !newPhone.isEmpty()) {
+                    mDatabase.child(uid).child("phone").setValue(newPhone)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(ProfileEditor.this, "Teléfono actualizado con éxito", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(ProfileEditor.this, "Error al guardar el teléfono", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                }
+            }
+        });
+        
+        // Configurar la navegación inferior
+        setupBottomNavigation();
+
+    } // --- FIN DE onCreate() ---
+
+    // --- 4. AÑADIMOS onStart() PARA CARGAR DATOS DEL USUARIO ---
+    @Override
+    protected void onStart() {
+        super.onStart();
+        currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            // Nadie ha iniciado sesión, volver a Login
+            Intent intent = new Intent(getApplicationContext(), Login.class);
+            startActivity(intent);
+            finish();
+        } else {
+            // Usuario encontrado, cargar sus datos
+            uid = currentUser.getUid();
+            loadUserProfile(currentUser);
+        }
+    }
+
+    // --- 5. NUEVO MÉTODO PARA CARGAR DATOS ---
+    private void loadUserProfile(FirebaseUser user) {
+        // Cargar datos directos de Firebase Auth
+        if (user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
+            TextViewName.setText("👋 ¡Hola, " + user.getDisplayName() + "! 👤");
+            editName.setText(user.getDisplayName());
+        } else {
+            TextViewName.setText("👋 ¡Hola! 👤");
+        }
+        inputEmail.setText(user.getEmail());
+
+        // Deshabilitar la edición de email si inició con Google (recomendado)
+        if (user.getProviderData().size() > 1 && user.getProviderData().get(1).getProviderId().equals("google.com")) {
+            inputEmail.setEnabled(false);
+            buttonEditEmail.setEnabled(false);
+            // También deshabilitar contraseña si es de Google
+            inputPassword.setEnabled(false);
+            buttonEditPassword.setEnabled(false);
+        }
+
+        // Cargar datos extra (apellido, teléfono) desde Realtime Database
+        mDatabase.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    String lastName = snapshot.child("lastName").getValue(String.class);
+                    String phone = snapshot.child("phone").getValue(String.class);
+
+                    if (lastName != null) {
+                        inputLastName.setText(lastName);
+                    }
+                    if (phone != null) {
+                        inputPhone.setText(phone);
+                    }
+                } else {
+                    Log.w("ProfileEditor", "No existen datos adicionales para este usuario en la BD.");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("ProfileEditor", "Error al leer datos de la BD", error.toException());
             }
         });
     }

@@ -2,154 +2,176 @@ package com.example.myapplication;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.myapplication.databinding.ActivityMainBinding;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.HashMap;
-import java.util.Map;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private ActivityMainBinding binding;
-    private SharedPreferences sharedPreferences;
-    private RequestQueue queue;
-    private String temperatura, ph;
+    private FirebaseAuth mAuth;
+    private DatabaseReference databaseReference;
+    private ValueEventListener lecturasListener;
 
     @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+
+        setContentView(R.layout.activity_main);
+        binding = ActivityMainBinding.bind(findViewById(R.id.main));
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             return insets;
         });
 
-        sharedPreferences = getSharedPreferences("MyappName", MODE_PRIVATE);
+        mAuth = FirebaseAuth.getInstance();
 
-        if (sharedPreferences.getString("logged", "false").equals("false") || sharedPreferences.getString("name", "").isEmpty()) {
+        // Initialize Firebase listener setup
+        setupFirebaseListener();
+
+        // Setup Bottom Navigation (from BaseActivity)
+        setupBottomNavigation();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
             finish();
-            return; // Return to prevent further execution
+            return;
         }
 
-        binding.name.setText("👋 ¡Hola, " + sharedPreferences.getString("name", "") + "! 🏊");
-
-        queue = Volley.newRequestQueue(getApplicationContext());
-        fetchDashboardData();
-
-        binding.refreshTemperatureButton.setOnClickListener(v -> fetchDashboardData());
-        binding.refreshPhButton.setOnClickListener(v -> fetchDashboardData());
-
-        binding.logout.setOnClickListener(v -> logoutUser());
-
-        binding.userSettingsButton.setOnClickListener(view -> {
-            Intent intent = new Intent(getApplicationContext(), ProfileEditor.class);
-            startActivity(intent);
-        });
-
-        binding.modifyScheduleButton.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), PumpTimerSettingsActivity.class);
-            startActivity(intent);
-        });
-
-        binding.TempCard.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), TemperatureHistoryActivity.class);
-            startActivity(intent);
-        });
-
-        binding.PhCard.setOnClickListener(v -> {
-            Intent intent = new Intent(getApplicationContext(), PhView.class);
-            startActivity(intent);
-        });
+        if (databaseReference != null && lecturasListener != null) {
+            databaseReference.addValueEventListener(lecturasListener);
+        }
     }
 
-    private void fetchDashboardData() {
-        String url = "http://192.168.100.91/backendpiscina/datos_main.php";
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (databaseReference != null && lecturasListener != null) {
+            databaseReference.removeEventListener(lecturasListener);
+        }
+    }
 
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                response -> {
-                    Log.d("Response", response);
-                    try {
-                        JSONObject jsonObject = new JSONObject(response);
-                        String status = jsonObject.getString("status");
-                        if (status.equals("success")) {
-                            temperatura = jsonObject.getString("temperatura");
-                            ph = jsonObject.getString("ph");
-                            binding.poolTemperatureTextView.setText(temperatura + "°");
-                            binding.phLevelTextView.setText(ph);
-                            String schedule1 = jsonObject.getString("hora_inicio");
-                            String schedule2 = jsonObject.getString("hora_fin");
-                            binding.pumpScheduleTextView.setText(schedule1 + " - " + schedule2);
-                        } else {
-                            String message = jsonObject.getString("message");
-                            Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show();
-                        }
-                    } catch (JSONException e) {
-                        Toast.makeText(MainActivity.this, "Error de respuesta: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                },
-                error -> Toast.makeText(MainActivity.this, "Error de conexión: " + error.getMessage(), Toast.LENGTH_LONG).show()) {
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.nav_help) {
+            startActivity(new Intent(this, HelpActivity.class));
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void setupFirebaseListener() {
+        databaseReference = FirebaseDatabase.getInstance().getReference("sensor_status/actual");
+
+        lecturasListener = new ValueEventListener() {
+            @SuppressLint("SetTextI18n")
             @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<>();
-                params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                return params;
-            }
-        };
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    Double tempAgua = parseDouble(snapshot.child("tempAgua").getValue());
+                    Double ph = parseDouble(snapshot.child("phVoltaje").getValue());
+                    Double tempAire = parseDouble(snapshot.child("tempAire").getValue());
+                    Double humedadAire = parseDouble(snapshot.child("humedadAire").getValue());
 
-        queue.add(stringRequest);
-    }
+                    if (tempAgua != null && ph != null && tempAire != null && humedadAire != null) {
+                        String tempAguaStr = String.format("%.1f", tempAgua);
+                        String phStr = String.format("%.2f", ph);
+                        String tempAireStr = String.format("%.1f", tempAire);
+                        String humedadAireStr = String.format("%.1f", humedadAire);
 
-    private void logoutUser() {
-        String url = "http://192.168.100.91/backendpiscina/logout.php";
+                        binding.tempGauge.tvGaugeValue.setText(tempAguaStr + "°");
+                        binding.phGauge.tvGaugeValue.setText(phStr);
+                        binding.tempAireGauge.tvGaugeValue.setText(tempAireStr + "°");
+                        binding.humedadAireGauge.tvGaugeValue.setText(humedadAireStr + "%");
 
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                response -> {
-                    if (response.equals("success")) {
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.clear();
-                        editor.putString("logged", "false");
-                        editor.apply();
-
-                        Intent intent = new Intent(getApplicationContext(), Login.class);
-                        startActivity(intent);
-                        finish();
+                        updateGaugeProgress(tempAguaStr, phStr, tempAireStr, humedadAireStr);
                     } else {
-                        Toast.makeText(MainActivity.this, "Error al cerrar sesión: " + response, Toast.LENGTH_SHORT).show();
+                        Log.w("Firebase", "Datos incompletos en sensor_status/actual");
                     }
-                },
-                error -> Toast.makeText(MainActivity.this, "No se pudo cerrar sesión. Verifique su conexión.", Toast.LENGTH_SHORT).show()) {
+                } else {
+                    Log.w("Firebase", "El nodo 'sensor_status/actual' no existe");
+                }
+            }
+
             @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<>();
-                params.put("email", sharedPreferences.getString("email", ""));
-                params.put("apiKey", sharedPreferences.getString("apiKey", ""));
-                return params;
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.w("FirebaseError", "Fallo al leer los datos.", error.toException());
+                Toast.makeText(MainActivity.this, "Error al leer datos de Firebase", Toast.LENGTH_SHORT).show();
             }
         };
-        queue.add(stringRequest);
+    }
+
+    private Double parseDouble(Object value) {
+        if (value == null)
+            return null;
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private void updateGaugeProgress(String tempAguaStr, String phStr, String tempAireStr, String humedadAireStr) {
+        try {
+            float tempAgua = Float.parseFloat(tempAguaStr);
+            float ph = Float.parseFloat(phStr);
+            float tempAire = Float.parseFloat(tempAireStr);
+            float humedadAire = Float.parseFloat(humedadAireStr);
+
+            int tempAguaMax = 40;
+            binding.tempGauge.gaugeProgressBar.setMax(tempAguaMax);
+            binding.tempGauge.gaugeProgressBar.setProgress((int) tempAgua);
+
+            int phMax = 140;
+            binding.phGauge.gaugeProgressBar.setMax(phMax);
+            binding.phGauge.gaugeProgressBar.setProgress((int) (ph * 10));
+
+            int tempAireMax = 40;
+            binding.tempAireGauge.gaugeProgressBar.setMax(tempAireMax);
+            binding.tempAireGauge.gaugeProgressBar.setProgress((int) tempAire);
+
+            int humedadAireMax = 100;
+            binding.humedadAireGauge.gaugeProgressBar.setMax(humedadAireMax);
+            binding.humedadAireGauge.gaugeProgressBar.setProgress((int) humedadAire);
+
+        } catch (NumberFormatException e) {
+            Log.e("GaugeError", "No se pudo convertir el valor para la barra de progreso", e);
+        }
     }
 }

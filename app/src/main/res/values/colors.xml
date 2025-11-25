@@ -1,18 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Basic Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="red">#f44336</color>
-    <color name="royal_blue">#1E3CB4</color>
-    <color name="light_blue">#64B5F6</color>
-    <color name="dark_blue">#162C8F</color>
     <color name="light_gray">#CCCCCC</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="background_color">#FFFFFF</color>
+    <color name="primary_color">#0EA5E9</color>
+
+    <!-- Primary Colors -->
+    <color name="primary_blue">#0EA5E9</color>
+    <color name="secondary_blue">#0284C7</color>
+    <color name="accent_blue">#38BDF8</color>
+    <color name="primary">#6200EE</color>
+
+    <!-- Background Colors -->
+    <color name="background_gradient_start">#F0F9FF</color>
+    <color name="surface_variant">#E0F2FE</color>
+    <color name="background">#F5F5F5</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#DE000000</color>
+    <color name="text_secondary">#075985</color>
+    <color name="text_tertiary">#0284C7</color>
+    <color name="text_color">#333333</color>
+    <color name="link_color">#2196F3</color>
+
+    <!-- Status Colors -->
+    <color name="success">#10B981</color>
+    <color name="warning">#F59E0B</color>
+    <color name="error">#EF4444</color>
+
+    <!-- Sensor Colors -->
+    <color name="ph_color">#0EA5E9</color>
+    <color name="temp_color">#F59E0B</color>
     <color name="sensor_temp">#FFA726</color>
     <color name="sensor_ph">#EF5350</color>
     <color name="sensor_turbidity">#66BB6A</color>
-        <color name="background_color">#FFFFFF</color>
-        <color name="text_color">#333333</color>
-        <color name="link_color">#2196F3</color>
-    <color name="primary_color">#2196F3</color>
-    <color name="secondary_color">#0F5289</color>
+
+    <!-- Wave Colors -->
+    <color name="wave_primary">#0EA5E9</color>
+    <color name="wave_secondary">#38BDF8</color>
+    <color name="wave_tertiary">#7DD3FC</color>
+
+    <!-- Navigation -->
+    <color name="nav_selected">#0EA5E9</color>
+    <color name="nav_unselected">#94A3B8</color>
+    <color name="nav_item_default">#757575</color>
+    <color name="nav_item_selected">#2196F3</color>
 </resources>
