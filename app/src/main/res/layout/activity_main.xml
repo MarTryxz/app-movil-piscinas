@@ -37,22 +37,23 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <!-- pH Gauge -->
-        <include
-            layout="@layout/circular_gauge"
+        <com.example.myapplication.CircularGauge
             android:id="@+id/phGauge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="12dp"/>
+            android:layout_marginEnd="12dp"
+            app:gaugeTitle="@string/label_ph" />
 
         <!-- Temperature Gauge -->
-        <include
-            layout="@layout/circular_gauge"
+        <com.example.myapplication.CircularGauge
             android:id="@+id/tempGauge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"/>
+            android:layout_marginStart="12dp"
+            app:gaugeTitle="@string/label_temp_water"
+            app:gaugeUnit="°" />
 
     </LinearLayout>
     <LinearLayout
@@ -69,21 +70,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <include
-            layout="@layout/circular_gauge"
+        <com.example.myapplication.CircularGauge
             android:id="@+id/tempAireGauge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="12dp"/>
+            android:layout_marginEnd="12dp"
+            app:gaugeTitle="@string/label_temp_air"
+            app:gaugeUnit="°" />
 
-        <include
-            layout="@layout/circular_gauge"
+        <com.example.myapplication.CircularGauge
             android:id="@+id/humedadAireGauge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"/>
+            android:layout_marginStart="12dp"
+            app:gaugeTitle="@string/label_humidity"
+            app:gaugeUnit="%" />
 
     </LinearLayout>
     <!-- Wave Animation Container -->
