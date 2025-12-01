@@ -104,17 +104,12 @@ public class MainActivity extends BaseActivity {
                     Double humedadAire = parseDouble(snapshot.child("humedadAire").getValue());
 
                     if (tempAgua != null && ph != null && tempAire != null && humedadAire != null) {
-                        String tempAguaStr = String.format("%.1f", tempAgua);
-                        String phStr = String.format("%.2f", ph);
-                        String tempAireStr = String.format("%.1f", tempAire);
-                        String humedadAireStr = String.format("%.1f", humedadAire);
+                        binding.tempGauge.setValue(tempAgua);
+                        binding.phGauge.setValue(ph);
+                        binding.tempAireGauge.setValue(tempAire);
+                        binding.humedadAireGauge.setValue(humedadAire);
 
-                        binding.tempGauge.tvGaugeValue.setText(tempAguaStr + "°");
-                        binding.phGauge.tvGaugeValue.setText(phStr);
-                        binding.tempAireGauge.tvGaugeValue.setText(tempAireStr + "°");
-                        binding.humedadAireGauge.tvGaugeValue.setText(humedadAireStr + "%");
-
-                        updateGaugeProgress(tempAguaStr, phStr, tempAireStr, humedadAireStr);
+                        updateGaugeProgress(tempAgua, ph, tempAire, humedadAire);
                     } else {
                         Log.w("Firebase", "Datos incompletos en sensor_status/actual");
                     }
@@ -147,31 +142,29 @@ public class MainActivity extends BaseActivity {
         return null;
     }
 
-    private void updateGaugeProgress(String tempAguaStr, String phStr, String tempAireStr, String humedadAireStr) {
-        try {
-            float tempAgua = Float.parseFloat(tempAguaStr);
-            float ph = Float.parseFloat(phStr);
-            float tempAire = Float.parseFloat(tempAireStr);
-            float humedadAire = Float.parseFloat(humedadAireStr);
-
+    private void updateGaugeProgress(Double tempAgua, Double ph, Double tempAire, Double humedadAire) {
+        if (tempAgua != null) {
             int tempAguaMax = 40;
-            binding.tempGauge.gaugeProgressBar.setMax(tempAguaMax);
-            binding.tempGauge.gaugeProgressBar.setProgress((int) tempAgua);
+            binding.tempGauge.setMax(tempAguaMax);
+            binding.tempGauge.setProgress(tempAgua.intValue());
+        }
 
+        if (ph != null) {
             int phMax = 140;
-            binding.phGauge.gaugeProgressBar.setMax(phMax);
-            binding.phGauge.gaugeProgressBar.setProgress((int) (ph * 10));
+            binding.phGauge.setMax(phMax);
+            binding.phGauge.setProgress((int) (ph * 10));
+        }
 
+        if (tempAire != null) {
             int tempAireMax = 40;
-            binding.tempAireGauge.gaugeProgressBar.setMax(tempAireMax);
-            binding.tempAireGauge.gaugeProgressBar.setProgress((int) tempAire);
+            binding.tempAireGauge.setMax(tempAireMax);
+            binding.tempAireGauge.setProgress(tempAire.intValue());
+        }
 
+        if (humedadAire != null) {
             int humedadAireMax = 100;
-            binding.humedadAireGauge.gaugeProgressBar.setMax(humedadAireMax);
-            binding.humedadAireGauge.gaugeProgressBar.setProgress((int) humedadAire);
-
-        } catch (NumberFormatException e) {
-            Log.e("GaugeError", "No se pudo convertir el valor para la barra de progreso", e);
+            binding.humedadAireGauge.setMax(humedadAireMax);
+            binding.humedadAireGauge.setProgress(humedadAire.intValue());
         }
     }
 }
